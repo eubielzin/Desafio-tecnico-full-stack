@@ -98,17 +98,33 @@ Duas reservas na mesma sala no mesmo dia não podem ter sobreposição de horár
 
 A detecção usa interseção de intervalos abertos: `A.inicio < B.fim AND A.fim > B.inicio`.
 
-**Decisão de produto:** reservas consecutivas (14:00–15:00 e 15:00–16:00) **não** são conflito — a desigualdade é estrita.
-
 Ao editar uma reserva, a própria reserva é excluída da verificação de conflito (parâmetro `excludeId`), permitindo salvar sem alterar horário.
 
 ### Regra 2 — Capacidade
 
-`quantidade_participantes` não pode ser maior que `sala.capacidade`. Retorna HTTP 409 com mensagem explicativa.
+`quantidade_participantes` não pode ser maior que `sala.capacidade`. Optou-se por **bloqueio rígido** (HTTP 409) — aviso sem bloqueio permitiria persistir dados incoerentes no banco. O formulário exibe a capacidade máxima da sala selecionada para que o usuário saiba o limite antes de errar.
 
 ### Regra 3 — Horário válido
 
 `horario_fim > horario_inicio` é validado no schema Zod (client + server). Todos os campos são obrigatórios.
+
+---
+
+## Decisões de produto
+
+O enunciado deixa quatro questões em aberto intencionalmente. Decisões tomadas e justificativas:
+
+**1. Reservas que encostam são conflito?**
+Sim. Uma reserva que termina às 15h00 e outra que começa às 15h00 na mesma sala **são conflito**. A pessoa ainda pode estar na sala quando a próxima reserva começa. A detecção usa desigualdade não-estrita (`inicio <= fim` e `fim >= inicio`), bloqueando qualquer toque entre intervalos.
+
+**2. Existe horário de funcionamento?**
+Sim. Reservas só são permitidas entre **07:00 e 23:59**. Madrugada (00:00–06:59) é bloqueada tanto no cliente (Zod) quanto no servidor (Route Handler). Fim de semana é permitido — equipes podem ter necessidades de reunião no sábado ou domingo. Reservas que cruzam a meia-noite (ex.: 23:00–00:00) não são suportadas pois o tipo `time` do PostgreSQL não representa "dia seguinte"; recomenda-se encerrar até 23:59.
+
+**3. O que acontece ao editar uma reserva para um horário que conflita?**
+A edição é **bloqueada** com HTTP 409, da mesma forma que a criação. O sistema exclui a própria reserva da verificação (`excludeId`) para não conflitar consigo mesma ao salvar sem mudança de horário, mas qualquer sobreposição com outra reserva é impedida.
+
+**4. Como o frontend comunica um conflito?**
+Em dois níveis simultâneos: (a) um **toast** (notificação temporária no canto) com a mensagem exata do servidor, e (b) um **alerta vermelho inline** dentro do próprio formulário que permanece visível enquanto o modal estiver aberto. A mensagem descreve o conflito com o horário específico (ex.: *"Conflito: já existe uma reserva das 14:00 às 15:00 nesta sala."*), deixando claro ao usuário qual horário ajustar.
 
 ---
 
