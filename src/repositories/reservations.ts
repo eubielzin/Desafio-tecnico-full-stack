@@ -88,15 +88,16 @@ export async function findConflicts(
 ): Promise<Reservation[]> {
   const supabase = createServerClient()
 
-  // Two intervals overlap when: A.start < B.end AND A.end > B.start
-  // We use strict inequality so that back-to-back bookings (e.g. 10–11 and 11–12) do NOT conflict
+  // Two intervals overlap when: A.start <= B.end AND A.end >= B.start
+  // Non-strict inequality so that back-to-back bookings (e.g. 14–15 and 15–16) ARE a conflict:
+  // someone might still be in the room when the next reservation starts.
   let query = supabase
     .from('reservas')
     .select('*')
     .eq('sala_id', salaId)
     .eq('data', data)
-    .lt('horario_inicio', horarioFim)
-    .gt('horario_fim', horarioInicio)
+    .lte('horario_inicio', horarioFim)
+    .gte('horario_fim', horarioInicio)
 
   if (excludeId) {
     query = query.neq('id', excludeId)
