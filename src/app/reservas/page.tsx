@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { format } from 'date-fns'
+import { type DateRange } from 'react-day-picker'
 import { Plus, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -13,12 +15,14 @@ import { ReservationDialog } from '@/features/reservations/components/reservatio
 import { useReservations } from '@/hooks/use-reservations'
 import { useRooms } from '@/hooks/use-rooms'
 import { getReservationStatus } from '@/lib/utils'
+import { type SortOrder } from '@/features/reservations/components/reservations-filters'
 
 export default function ReservasPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedSalaId, setSelectedSalaId] = useState('')
-  const [selectedDate, setSelectedDate] = useState('')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedStatus, setSelectedStatus] = useState('')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
 
   const { data: rooms = [] } = useRooms()
   const { data: reservations, isLoading, isError, refetch } = useReservations(
@@ -27,16 +31,30 @@ export default function ReservasPage() {
 
   const filteredReservations = useMemo(() => {
     if (!reservations) return []
+    const dir = sortOrder === 'asc' ? 1 : -1
     let list = [...reservations].sort((a, b) => {
-      if (a.data !== b.data) return a.data.localeCompare(b.data)
-      return a.horario_inicio.localeCompare(b.horario_inicio)
+      const dateCmp = a.data.localeCompare(b.data)
+      if (dateCmp !== 0) return dateCmp * dir
+      return a.horario_inicio.localeCompare(b.horario_inicio) * dir
     })
-    if (selectedDate) list = list.filter((r) => r.data === selectedDate)
-    if (selectedStatus) list = list.filter((r) => getReservationStatus(r) === selectedStatus)
-    return list
-  }, [reservations, selectedDate, selectedStatus])
 
-  const hasFilters = selectedSalaId || selectedDate || selectedStatus
+    if (dateRange?.from) {
+      const fromStr = format(dateRange.from, 'yyyy-MM-dd')
+      list = list.filter((r) => r.data >= fromStr)
+    }
+    if (dateRange?.to) {
+      const toStr = format(dateRange.to, 'yyyy-MM-dd')
+      list = list.filter((r) => r.data <= toStr)
+    }
+
+    if (selectedStatus) {
+      list = list.filter((r) => getReservationStatus(r) === selectedStatus)
+    }
+
+    return list
+  }, [reservations, dateRange, selectedStatus])
+
+  const hasFilters = selectedSalaId || dateRange || selectedStatus
 
   return (
     <div>
@@ -55,10 +73,12 @@ export default function ReservasPage() {
         rooms={rooms}
         selectedSalaId={selectedSalaId}
         onSalaChange={setSelectedSalaId}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
+        sortOrder={sortOrder}
+        onSortChange={setSortOrder}
       />
 
       {isLoading && <TableSkeleton rows={5} cols={5} />}

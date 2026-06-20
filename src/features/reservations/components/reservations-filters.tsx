@@ -1,8 +1,12 @@
 'use client'
 
-import { X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { X, CalendarIcon, ArrowUpDown } from 'lucide-react'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { type DateRange } from 'react-day-picker'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -18,39 +22,63 @@ const STATUS_OPTIONS: { value: ReservationStatus; label: string }[] = [
   { value: 'encerrada', label: 'Encerrada' },
 ]
 
+export type SortOrder = 'asc' | 'desc'
+
+// Sentinel interno — evita que Base UI alterne entre controlado e não-controlado
+const ALL = '*'
+
 interface ReservationsFiltersProps {
   rooms: Room[]
   selectedSalaId: string
   onSalaChange: (salaId: string) => void
-  selectedDate: string
-  onDateChange: (date: string) => void
+  dateRange: DateRange | undefined
+  onDateRangeChange: (range: DateRange | undefined) => void
   selectedStatus: string
   onStatusChange: (status: string) => void
+  sortOrder: SortOrder
+  onSortChange: (order: SortOrder) => void
 }
 
 export function ReservationsFilters({
   rooms,
   selectedSalaId,
   onSalaChange,
-  selectedDate,
-  onDateChange,
+  dateRange,
+  onDateRangeChange,
   selectedStatus,
   onStatusChange,
+  sortOrder,
+  onSortChange,
 }: ReservationsFiltersProps) {
-  const hasFilters = selectedSalaId || selectedDate || selectedStatus
+  const hasFilters = selectedSalaId || dateRange || selectedStatus
 
   const selectedRoom = rooms.find((r) => r.id === selectedSalaId)
   const selectedStatusLabel = STATUS_OPTIONS.find((s) => s.value === selectedStatus)?.label
 
+  // Converte para o sentinel interno e de volta para o valor externo
+  const salaValue = selectedSalaId || ALL
+  const statusValue = selectedStatus || ALL
+
+  function formatRange() {
+    if (!dateRange?.from) return null
+    if (!dateRange.to) return format(dateRange.from, 'dd/MM/yyyy', { locale: ptBR })
+    return `${format(dateRange.from, 'dd/MM/yy', { locale: ptBR })} — ${format(dateRange.to, 'dd/MM/yy', { locale: ptBR })}`
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2 mb-4">
-      <Select value={selectedSalaId} onValueChange={(value) => onSalaChange(value ?? '')}>
+      {/* Filtro por sala */}
+      <Select
+        value={salaValue}
+        onValueChange={(v) => onSalaChange(v === ALL ? '' : (v ?? ''))}
+      >
         <SelectTrigger className="w-[180px]">
           <span className={cn('flex-1 truncate text-left text-sm', !selectedRoom && 'text-muted-foreground')}>
             {selectedRoom ? selectedRoom.nome : 'Filtrar por sala'}
           </span>
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value={ALL}>Todas as salas</SelectItem>
           {rooms.map((room) => (
             <SelectItem key={room.id} value={room.id}>
               {room.nome}
@@ -59,20 +87,54 @@ export function ReservationsFilters({
         </SelectContent>
       </Select>
 
-      <Input
-        type="date"
-        className="w-[160px] h-8"
-        value={selectedDate}
-        onChange={(e) => onDateChange(e.target.value)}
-      />
+      {/* Filtro por período com "x" para limpar */}
+      <Popover>
+        <PopoverTrigger
+          className={cn(
+            buttonVariants({ variant: 'outline' }),
+            'h-8 w-[220px] justify-start text-left font-normal text-sm',
+            !dateRange && 'text-muted-foreground'
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+          <span className="flex-1 truncate">{formatRange() ?? 'Filtrar por período'}</span>
+          {dateRange && (
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation()
+                onDateRangeChange(undefined)
+              }}
+              className="ml-1 rounded-sm p-0.5 hover:bg-accent"
+            >
+              <X className="h-3 w-3" />
+            </span>
+          )}
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="range"
+            selected={dateRange}
+            onSelect={onDateRangeChange}
+            locale={ptBR}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
 
-      <Select value={selectedStatus} onValueChange={(value) => onStatusChange(value ?? '')}>
+      {/* Filtro por status */}
+      <Select
+        value={statusValue}
+        onValueChange={(v) => onStatusChange(v === ALL ? '' : (v ?? ''))}
+      >
         <SelectTrigger className="w-[160px]">
           <span className={cn('flex-1 truncate text-left text-sm', !selectedStatus && 'text-muted-foreground')}>
             {selectedStatusLabel ?? 'Filtrar por status'}
           </span>
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value={ALL}>Todos os status</SelectItem>
           {STATUS_OPTIONS.map((s) => (
             <SelectItem key={s.value} value={s.value}>
               {s.label}
@@ -81,11 +143,25 @@ export function ReservationsFilters({
         </SelectContent>
       </Select>
 
+      {/* Ordenação por horário */}
+      <Select value={sortOrder} onValueChange={(v) => onSortChange((v ?? 'asc') as SortOrder)}>
+        <SelectTrigger className="w-[190px]">
+          <ArrowUpDown className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="flex-1 truncate text-left text-sm">
+            {sortOrder === 'asc' ? 'Mais antigo primeiro' : 'Mais recente primeiro'}
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="asc">Mais antigo primeiro</SelectItem>
+          <SelectItem value="desc">Mais recente primeiro</SelectItem>
+        </SelectContent>
+      </Select>
+
       {hasFilters && (
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => { onSalaChange(''); onDateChange(''); onStatusChange('') }}
+          onClick={() => { onSalaChange(''); onDateRangeChange(undefined); onStatusChange('') }}
           className="h-8 px-2 text-muted-foreground"
         >
           <X className="h-4 w-4 mr-1" />
