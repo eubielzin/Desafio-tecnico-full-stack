@@ -12,26 +12,31 @@ import { ReservationsFilters } from '@/features/reservations/components/reservat
 import { ReservationDialog } from '@/features/reservations/components/reservation-dialog'
 import { useReservations } from '@/hooks/use-reservations'
 import { useRooms } from '@/hooks/use-rooms'
+import { getReservationStatus } from '@/lib/utils'
 
 export default function ReservasPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedSalaId, setSelectedSalaId] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
 
   const { data: rooms = [] } = useRooms()
-  const {
-    data: reservations,
-    isLoading,
-    isError,
-    refetch,
-  } = useReservations(selectedSalaId || undefined)
+  const { data: reservations, isLoading, isError, refetch } = useReservations(
+    selectedSalaId || undefined
+  )
 
-  const sortedReservations = useMemo(() => {
+  const filteredReservations = useMemo(() => {
     if (!reservations) return []
-    return [...reservations].sort((a, b) => {
+    let list = [...reservations].sort((a, b) => {
       if (a.data !== b.data) return a.data.localeCompare(b.data)
       return a.horario_inicio.localeCompare(b.horario_inicio)
     })
-  }, [reservations])
+    if (selectedDate) list = list.filter((r) => r.data === selectedDate)
+    if (selectedStatus) list = list.filter((r) => getReservationStatus(r) === selectedStatus)
+    return list
+  }, [reservations, selectedDate, selectedStatus])
+
+  const hasFilters = selectedSalaId || selectedDate || selectedStatus
 
   return (
     <div>
@@ -46,13 +51,15 @@ export default function ReservasPage() {
         }
       />
 
-      {rooms.length > 0 && (
-        <ReservationsFilters
-          rooms={rooms}
-          selectedSalaId={selectedSalaId}
-          onSalaChange={setSelectedSalaId}
-        />
-      )}
+      <ReservationsFilters
+        rooms={rooms}
+        selectedSalaId={selectedSalaId}
+        onSalaChange={setSelectedSalaId}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        selectedStatus={selectedStatus}
+        onStatusChange={setSelectedStatus}
+      />
 
       {isLoading && <TableSkeleton rows={5} cols={5} />}
 
@@ -63,13 +70,13 @@ export default function ReservasPage() {
         />
       )}
 
-      {!isLoading && !isError && sortedReservations.length === 0 && (
+      {!isLoading && !isError && filteredReservations.length === 0 && (
         <EmptyState
           icon={CalendarDays}
           title="Nenhuma reserva encontrada"
           description={
-            selectedSalaId
-              ? 'Não há reservas para a sala selecionada. Tente outro filtro ou crie uma nova reserva.'
+            hasFilters
+              ? 'Nenhuma reserva corresponde aos filtros selecionados. Tente outros critérios.'
               : 'Crie sua primeira reserva para começar.'
           }
           action={
@@ -81,8 +88,8 @@ export default function ReservasPage() {
         />
       )}
 
-      {!isLoading && !isError && sortedReservations.length > 0 && (
-        <ReservationsTable reservations={sortedReservations} />
+      {!isLoading && !isError && filteredReservations.length > 0 && (
+        <ReservationsTable reservations={filteredReservations} />
       )}
 
       <ReservationDialog
