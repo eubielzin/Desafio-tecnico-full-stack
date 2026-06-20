@@ -30,6 +30,7 @@ export function ReservationDialog({
   const updateReservation = useUpdateReservation()
 
   const isLoading = createReservation.isPending || updateReservation.isPending
+  const serverError = (createReservation.error ?? updateReservation.error)?.message
 
   function handleSubmit(values: ReservationFormValues) {
     if (reservation) {
@@ -59,6 +60,7 @@ export function ReservationDialog({
           onSubmit={handleSubmit}
           isLoading={isLoading}
           onCancel={() => onOpenChange(false)}
+          serverError={serverError}
         />
       </DialogContent>
     </Dialog>

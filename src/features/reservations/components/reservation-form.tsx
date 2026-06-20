@@ -5,15 +5,16 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CalendarIcon } from 'lucide-react'
+import { AlertCircle, CalendarIcon } from 'lucide-react'
 import { reservationSchema, type ReservationFormValues } from '@/schemas/reservation'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import type { ReservationWithRoom, Room } from '@/types'
 
@@ -35,6 +37,7 @@ interface ReservationFormProps {
   onSubmit: (values: ReservationFormValues) => void
   isLoading?: boolean
   onCancel: () => void
+  serverError?: string
 }
 
 export function ReservationForm({
@@ -43,6 +46,7 @@ export function ReservationForm({
   onSubmit,
   isLoading,
   onCancel,
+  serverError,
 }: ReservationFormProps) {
   const form = useForm<ReservationFormValues>({
     resolver: zodResolver(reservationSchema),
@@ -56,6 +60,9 @@ export function ReservationForm({
       horario_fim: defaultValues?.horario_fim?.slice(0, 5) ?? '',
     },
   })
+
+  const selectedSalaId = form.watch('sala_id')
+  const selectedRoom = rooms.find((r) => r.id === selectedSalaId)
 
   useEffect(() => {
     if (defaultValues) {
@@ -83,7 +90,11 @@ export function ReservationForm({
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma sala" />
+                    <span className={cn('flex-1 truncate text-left text-sm', !selectedRoom && 'text-muted-foreground')}>
+                      {selectedRoom
+                        ? `${selectedRoom.nome} — ${selectedRoom.capacidade} pessoa${selectedRoom.capacidade !== 1 ? 's' : ''}`
+                        : 'Selecione uma sala'}
+                    </span>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -137,11 +148,17 @@ export function ReservationForm({
                 <Input
                   type="number"
                   min={1}
+                  max={selectedRoom?.capacidade}
                   placeholder="Ex: 5"
                   {...field}
                   onChange={(e) => field.onChange(e.target.valueAsNumber)}
                 />
               </FormControl>
+              {selectedRoom && (
+                <FormDescription>
+                  Capacidade máxima da sala: <strong>{selectedRoom.capacidade} pessoa{selectedRoom.capacidade !== 1 ? 's' : ''}</strong>
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -154,22 +171,20 @@ export function ReservationForm({
             <FormItem>
               <FormLabel>Data</FormLabel>
               <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !field.value && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value
-                        ? format(new Date(field.value + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
-                        : 'Selecione uma data'}
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
+                <FormControl>
+                  <PopoverTrigger
+                    className={cn(
+                      buttonVariants({ variant: 'outline' }),
+                      'w-full justify-start text-left font-normal',
+                      !field.value && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {field.value
+                      ? format(new Date(field.value + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                      : 'Selecione uma data'}
+                  </PopoverTrigger>
+                </FormControl>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
@@ -178,7 +193,6 @@ export function ReservationForm({
                       field.onChange(date ? format(date, 'yyyy-MM-dd') : '')
                     }
                     locale={ptBR}
-                    initialFocus
                   />
                 </PopoverContent>
               </Popover>
@@ -216,6 +230,13 @@ export function ReservationForm({
             )}
           />
         </div>
+
+        {serverError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{serverError}</AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
