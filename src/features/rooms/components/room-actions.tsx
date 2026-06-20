@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +26,9 @@ export function RoomActions({ room }: { room: Room }) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Ações</span>
-          </Button>
+        <DropdownMenuTrigger className={buttonVariants({ variant: 'ghost', size: 'icon' })}>
+          <MoreHorizontal className="h-4 w-4" />
+          <span className="sr-only">Ações</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
@@ -39,7 +37,7 @@ export function RoomActions({ room }: { room: Room }) {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setDeleteOpen(true)}
-            className="text-destructive focus:text-destructive"
+            variant="destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Excluir
