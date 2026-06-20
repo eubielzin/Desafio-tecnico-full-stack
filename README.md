@@ -12,10 +12,12 @@ A aplicação permite que equipes cadastrem salas de reunião e realizem reserva
 
 - **Dashboard** — totais de salas, reservas, reservas em andamento e próximas reservas (atualização automática a cada 1 minuto)
 - **CRUD de Salas** — criar, editar, excluir e listar salas com nome e capacidade
-- **CRUD de Reservas** — criar, editar, excluir e listar com filtro por sala e ordenação por data/horário
+- **CRUD de Reservas** — criar, editar, excluir e listar reservas com indicação de capacidade máxima da sala no formulário
+- **Filtros avançados** — filtrar por sala, por período (seletor de intervalo de datas) e por status; ordenação por data/horário (mais antigo ou mais recente primeiro)
 - **Status em tempo real** — cada reserva é classificada automaticamente como *Em andamento*, *Próxima* ou *Encerrada*
-- **Prevenção de conflitos** — bloqueio no servidor de reservas sobrepostas na mesma sala
+- **Prevenção de conflitos** — bloqueio no servidor de reservas sobrepostas ou encostadas na mesma sala
 - **Validação de capacidade** — impede reservas com mais participantes do que a sala comporta
+- **Comunicação de erros em dois níveis** — toast temporário + alerta inline vermelho dentro do formulário
 
 ---
 
@@ -27,16 +29,16 @@ src/
 │   ├── api/
 │   │   ├── salas/          # GET (lista) · POST (cria)
 │   │   │   └── [id]/       # GET · PUT · DELETE
-│   │   ├── reservas/       # GET (lista + filtro) · POST (cria + regras)
+│   │   ├── reservas/       # GET (lista + filtro por sala) · POST (cria + regras)
 │   │   │   └── [id]/       # GET · PUT (edita + regras) · DELETE
 │   │   └── dashboard/      # GET (métricas agregadas)
 │   ├── salas/              # Página de salas
-│   ├── reservas/           # Página de reservas
+│   ├── reservas/           # Página de reservas (filtros + listagem)
 │   ├── layout.tsx          # Layout raiz com Navbar e Providers
 │   └── page.tsx            # Dashboard
 │
 ├── components/             # Componentes compartilhados de UI
-│   ├── ui/                 # Shadcn/UI (button, dialog, form, table…)
+│   ├── ui/                 # Shadcn/UI (button, dialog, form, table, calendar…)
 │   ├── navbar.tsx          # Sidebar desktop + bottom nav mobile
 │   ├── page-header.tsx
 │   ├── empty-state.tsx
@@ -46,9 +48,21 @@ src/
 │   └── providers.tsx       # QueryClientProvider + Toaster
 │
 ├── features/
-│   ├── rooms/components/        # RoomForm, RoomDialog, RoomActions, RoomsTable
-│   ├── reservations/components/ # ReservationForm, ReservationDialog, ReservationsTable…
-│   └── dashboard/components/    # StatsCard, UpcomingReservations
+│   ├── rooms/components/
+│   │   ├── room-form.tsx
+│   │   ├── room-dialog.tsx
+│   │   ├── room-actions.tsx     # Menu de ações (editar/excluir) da linha da tabela
+│   │   └── rooms-table.tsx
+│   ├── reservations/components/
+│   │   ├── reservation-form.tsx         # Formulário com hint de capacidade e erro inline
+│   │   ├── reservation-dialog.tsx       # Modal de criar/editar reserva
+│   │   ├── reservation-actions.tsx      # Menu de ações (editar/excluir) da linha da tabela
+│   │   ├── reservation-status-badge.tsx # Badge colorido de status
+│   │   ├── reservations-filters.tsx     # Filtros: sala · período · status · ordenação
+│   │   └── reservations-table.tsx
+│   └── dashboard/components/
+│       ├── stats-card.tsx
+│       └── upcoming-reservations.tsx
 │
 ├── hooks/
 │   ├── use-rooms.ts        # useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom
@@ -64,7 +78,7 @@ src/
 │
 ├── schemas/
 │   ├── room.ts             # Zod schema de sala
-│   └── reservation.ts      # Zod schema de reserva (com refinement horário_fim > início)
+│   └── reservation.ts      # Zod schema de reserva (horário de abertura + refinements)
 │
 ├── types/
 │   └── index.ts            # Interfaces TypeScript: Room, Reservation, DashboardStats…
@@ -81,11 +95,12 @@ src/
 Formulário (React Hook Form + Zod)
   → useMutation (TanStack Query)
     → POST /api/reservas (Route Handler)
-      → Valida schema Zod
+      → Valida schema Zod (campos, horário de abertura, fim > início)
       → Verifica capacidade da sala (Regra 2)
       → Detecta conflito de horário (Regra 1)
       → Persiste no Supabase / retorna erro 409
     → Invalida cache → UI atualizada
+    → Toast + alerta inline se houver erro do servidor
 ```
 
 ---
@@ -94,9 +109,9 @@ Formulário (React Hook Form + Zod)
 
 ### Regra 1 — Conflito de horário
 
-Duas reservas na mesma sala no mesmo dia não podem ter sobreposição de horários.
+Duas reservas na mesma sala no mesmo dia não podem ter sobreposição de horários, incluindo reservas que se encostam.
 
-A detecção usa interseção de intervalos abertos: `A.inicio < B.fim AND A.fim > B.inicio`.
+A detecção usa interseção de intervalos com desigualdade **não-estrita**: `A.inicio <= B.fim AND A.fim >= B.inicio`.
 
 Ao editar uma reserva, a própria reserva é excluída da verificação de conflito (parâmetro `excludeId`), permitindo salvar sem alterar horário.
 
@@ -106,7 +121,7 @@ Ao editar uma reserva, a própria reserva é excluída da verificação de confl
 
 ### Regra 3 — Horário válido
 
-`horario_fim > horario_inicio` é validado no schema Zod (client + server). Todos os campos são obrigatórios.
+`horario_fim > horario_inicio` é validado no schema Zod (cliente + servidor). Reservas só podem começar a partir das **07:00** — madrugada (00:00–06:59) é bloqueada. Todos os campos são obrigatórios.
 
 ---
 
@@ -124,7 +139,7 @@ Sim. Reservas só são permitidas entre **07:00 e 23:59**. Madrugada (00:00–06
 A edição é **bloqueada** com HTTP 409, da mesma forma que a criação. O sistema exclui a própria reserva da verificação (`excludeId`) para não conflitar consigo mesma ao salvar sem mudança de horário, mas qualquer sobreposição com outra reserva é impedida.
 
 **4. Como o frontend comunica um conflito?**
-Em dois níveis simultâneos: (a) um **toast** (notificação temporária no canto) com a mensagem exata do servidor, e (b) um **alerta vermelho inline** dentro do próprio formulário que permanece visível enquanto o modal estiver aberto. A mensagem descreve o conflito com o horário específico (ex.: *"Conflito: já existe uma reserva das 14:00 às 15:00 nesta sala."*), deixando claro ao usuário qual horário ajustar.
+Em dois níveis simultâneos: (a) um **toast** (notificação temporária no canto) com a mensagem exata do servidor, e (b) um **alerta vermelho inline** dentro do próprio formulário que permanece visível enquanto o modal estiver aberto. A mensagem descreve o conflito com o horário específico (ex.: *"Conflito de horário: já existe uma reserva nesta sala das 14:00 às 15:00."*), deixando claro ao usuário qual horário ajustar.
 
 ---
 
@@ -157,7 +172,7 @@ reservas
 
 | Índice | Finalidade |
 |---|---|
-| `salas_nome_unique` | Impede salas com mesmo nome |
+| `salas_nome_unique` | Impede salas com mesmo nome (case-insensitive) |
 | `reservas_sala_id_idx` | Busca de reservas por sala |
 | `reservas_data_idx` | Busca por data (dashboard) |
 | `reservas_sala_data_idx` | Detecção de conflito (sala + data) |
@@ -170,14 +185,18 @@ O SQL completo está em [`supabase/schema.sql`](supabase/schema.sql).
 
 | Camada | Tecnologia |
 |---|---|
-| Framework | Next.js 15 (App Router) |
-| Linguagem | TypeScript |
+| Framework | Next.js 16 (App Router) |
+| Linguagem | TypeScript 5 |
+| Runtime | React 19 |
 | Banco de dados | PostgreSQL via Supabase |
-| ORM/Query | Supabase JS Client |
-| Validação | Zod |
+| ORM/Query | Supabase JS Client v2 |
+| Validação | Zod v4 |
 | Formulários | React Hook Form + @hookform/resolvers |
 | Estado servidor | TanStack Query v5 |
-| UI | Shadcn/UI + Tailwind CSS |
+| UI Components | Shadcn/UI + @base-ui/react |
+| Estilização | Tailwind CSS v4 |
+| Calendário | react-day-picker v10 |
+| Datas | date-fns v4 (locale pt-BR) |
 | Notificações | Sonner |
 | Ícones | Lucide React |
 
