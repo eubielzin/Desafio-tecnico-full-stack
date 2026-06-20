@@ -52,7 +52,7 @@ export default function ReservasPage() {
     }
 
     return list
-  }, [reservations, dateRange, selectedStatus])
+  }, [reservations, dateRange, selectedStatus, sortOrder])
 
   const hasFilters = selectedSalaId || dateRange || selectedStatus
 
