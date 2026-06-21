@@ -10,10 +10,13 @@ import {
 } from '@/components/ui/table'
 import { ReservationStatusBadge } from './reservation-status-badge'
 import { ReservationActions } from './reservation-actions'
+import { useRole } from '@/hooks/use-role'
 import { formatDate, formatTime } from '@/lib/utils'
 import type { ReservationWithRoom } from '@/types'
 
 export function ReservationsTable({ reservations }: { reservations: ReservationWithRoom[] }) {
+  const { isAdmin } = useRole()
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -26,7 +29,7 @@ export function ReservationsTable({ reservations }: { reservations: ReservationW
             <TableHead className="hidden lg:table-cell">Responsável</TableHead>
             <TableHead className="hidden lg:table-cell">Participantes</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-12" />
+            {isAdmin && <TableHead className="w-12" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -51,9 +54,11 @@ export function ReservationsTable({ reservations }: { reservations: ReservationW
               <TableCell>
                 <ReservationStatusBadge reservation={reservation} />
               </TableCell>
-              <TableCell>
-                <ReservationActions reservation={reservation} />
-              </TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <ReservationActions reservation={reservation} />
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

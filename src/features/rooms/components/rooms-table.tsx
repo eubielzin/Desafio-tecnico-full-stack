@@ -10,10 +10,13 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { RoomActions } from './room-actions'
+import { useRole } from '@/hooks/use-role'
 import { formatDate } from '@/lib/utils'
 import type { Room } from '@/types'
 
 export function RoomsTable({ rooms }: { rooms: Room[] }) {
+  const { isAdmin } = useRole()
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -22,7 +25,7 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
             <TableHead>Nome</TableHead>
             <TableHead>Capacidade</TableHead>
             <TableHead className="hidden sm:table-cell">Criada em</TableHead>
-            <TableHead className="w-12" />
+            {isAdmin && <TableHead className="w-12" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -35,9 +38,11 @@ export function RoomsTable({ rooms }: { rooms: Room[] }) {
               <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                 {formatDate(room.created_at)}
               </TableCell>
-              <TableCell>
-                <RoomActions room={room} />
-              </TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <RoomActions room={room} />
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
