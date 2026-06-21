@@ -317,42 +317,6 @@ Acesse [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Como suportar reservas recorrentes no futuro
+## Reservas recorrentes
 
-A arquitetura atual comporta a extensão para reservas recorrentes sem quebrar o modelo existente. A abordagem recomendada:
-
-### Modelagem
-
-Adicionar uma tabela `recorrencias` que define a regra de repetição, sem alterar a tabela `reservas`:
-
-```sql
-create table recorrencias (
-  id                       uuid primary key default gen_random_uuid(),
-  sala_id                  uuid not null references salas(id),
-  titulo                   varchar(150) not null,
-  participante_responsavel varchar(100) not null,
-  quantidade_participantes integer not null,
-  horario_inicio           time not null,
-  horario_fim              time not null,
-  frequencia               text not null,  -- 'diaria' | 'semanal' | 'mensal'
-  dias_semana              integer[],      -- [1,3,5] = seg, qua, sex
-  data_inicio              date not null,
-  data_fim                 date,
-  created_at               timestamptz default now()
-);
-
--- Cada reserva pode referenciar sua regra de recorrência
-alter table reservas add column recorrencia_id uuid references recorrencias(id);
-```
-
-### Estratégia de geração
-
-**Geração antecipada (eager):** ao criar uma recorrência, gerar todas as instâncias dentro de um horizonte (ex.: 6 meses) como linhas individuais em `reservas`. Simples de implementar e preserva toda a lógica de conflito já existente sem nenhuma alteração.
-
-**Geração sob demanda (lazy):** armazenar apenas a regra e gerar as instâncias ao consultar. Mais eficiente para regras longas, mas exige adaptar a detecção de conflito para comparar contra instâncias virtuais.
-
-A geração antecipada é recomendada para começar — toda a validação de conflito (`findConflicts`) funciona sem alteração, pois as instâncias já existem como reservas normais.
-
-### Edição de instâncias
-
-Ao editar uma reserva recorrente, oferecer três opções: *somente esta*, *esta e as seguintes*, *todas*. Isso pode ser implementado com um campo `excecoes` (array de datas) na tabela `recorrencias` para marcar instâncias canceladas ou modificadas individualmente.
+Eu criaria uma regra de recorrência para a reserva (ex.: toda terça às 14h até tal data). Na hora de verificar conflitos, o sistema analisaria todas as datas geradas por essa regra e bloquearia a criação se alguma delas já estivesse ocupada.
