@@ -77,6 +77,14 @@ export function ReservationForm({
   const availableFrom = selectedRoom?.disponivel_madrugada ? '00:00' : '07:00'
 
   useEffect(() => {
+    if (!selectedRoom || selectedRoom.disponivel_fim_de_semana || !selectedData) return
+    const dayOfWeek = new Date(selectedData + 'T12:00:00').getDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      form.setValue('data', '')
+    }
+  }, [selectedRoom, selectedData, form])
+
+  useEffect(() => {
     if (defaultValues) {
       form.reset({
         sala_id: defaultValues.sala_id,
