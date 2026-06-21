@@ -243,6 +243,7 @@ npm test
 
 - Node.js >= 18
 - Conta no [Supabase](https://supabase.com) (plano gratuito)
+- Conta no [Clerk](https://clerk.com) (plano gratuito)
 
 ### 1. Clone o repositório
 
@@ -263,7 +264,29 @@ npm install
 2. Vá em **SQL Editor**
 3. Cole e execute o conteúdo de `supabase/schema.sql`
 
-### 4. Configure as variáveis de ambiente
+### 4. Configure a autenticação (Clerk)
+
+1. Crie uma aplicação no [Clerk Dashboard](https://dashboard.clerk.com)
+2. Copie a **Publishable Key** e a **Secret Key**
+3. Para habilitar o papel de admin, acesse **Configure → Sessions → Customize session token** e adicione:
+
+```json
+{
+  "metadata": "{{user.public_metadata}}"
+}
+```
+
+4. Para tornar um usuário admin, acesse **Users**, selecione o usuário e adicione em **Public metadata**:
+
+```json
+{
+  "role": "admin"
+}
+```
+
+> Somente admins podem criar, editar e excluir salas e reservas. Usuários comuns têm acesso somente leitura.
+
+### 5. Configure as variáveis de ambiente
 
 Copie o arquivo de exemplo e preencha com suas credenciais:
 
@@ -274,14 +297,17 @@ cp .env.example .env.local
 Edite `.env.local`:
 
 ```env
+# Supabase — Project Settings → API
 NEXT_PUBLIC_SUPABASE_URL=https://<seu-projeto>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<sua-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<sua-service-role-key>
+
+# Clerk — Dashboard → API Keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
 ```
 
-As chaves estão em **Project Settings → API** no painel do Supabase.
-
-### 5. Inicie o servidor de desenvolvimento
+### 6. Inicie o servidor de desenvolvimento
 
 ```bash
 npm run dev
