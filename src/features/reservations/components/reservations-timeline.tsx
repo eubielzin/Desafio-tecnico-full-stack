@@ -34,7 +34,7 @@ function blockStyle(r: ReservationWithRoom): { top: number; height: number } {
 
 function blockColor(r: ReservationWithRoom): string {
   const status = getReservationStatus(r)
-  if (status === 'em_andamento') return 'bg-primary text-primary-foreground border-primary'
+  if (status === 'em_andamento') return 'bg-emerald-500 text-white border-emerald-600'
   if (status === 'proxima') return 'bg-blue-500 text-white border-blue-600'
   return 'bg-muted text-muted-foreground border-border line-through'
 }
@@ -173,7 +173,7 @@ export function ReservationsTimeline() {
       {/* Legenda */}
       <div className="flex items-center gap-5 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded border border-primary bg-primary" />
+          <div className="h-3 w-3 rounded border border-emerald-600 bg-emerald-500" />
           <span>Em andamento</span>
         </div>
         <div className="flex items-center gap-1.5">
