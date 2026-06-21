@@ -85,9 +85,12 @@ src/
 │   └── index.ts            # Interfaces TypeScript: Room, Reservation, DashboardStats…
 │
 └── lib/
-    ├── supabase.ts         # Clientes Supabase (browser e server)
-    ├── query-client.ts     # Instância QueryClient + query keys tipadas
-    └── utils.ts            # cn, formatDate, getReservationStatus, statusLabel…
+    ├── supabase.ts           # Clientes Supabase (browser e server)
+    ├── query-client.ts       # Instância QueryClient + query keys tipadas
+    ├── utils.ts              # cn, formatDate, getReservationStatus, statusLabel…
+    ├── business-rules.ts     # Funções puras das regras de negócio (testáveis sem banco)
+    └── __tests__/
+        └── business-rules.test.ts  # 30 testes das regras de conflito, capacidade, disponibilidade
 ```
 
 ### Fluxo de uma reserva
@@ -212,6 +215,25 @@ O SQL completo está em [`supabase/schema.sql`](supabase/schema.sql).
 | Datas | date-fns v4 (locale pt-BR) |
 | Notificações | Sonner |
 | Ícones | Lucide React |
+| Testes | Vitest 2.x |
+
+---
+
+## Testes
+
+As regras de negócio são extraídas em funções puras em `src/lib/business-rules.ts` e cobertas por 30 testes unitários usando **Vitest**, sem dependência de banco de dados ou servidor.
+
+```bash
+npm test
+```
+
+| Suite | Casos cobertos |
+|---|---|
+| `intervalsConflict` | Sobreposição parcial, contenção, back-to-back, sem sobreposição |
+| `hasTimeConflict` | Conflito com lista, encosto, lista vazia |
+| `exceedsCapacity` | Acima, no limite exato, abaixo |
+| `isMadrugada` | 00:00 / 06:59 bloqueados · 07:00 / 14:00 liberados |
+| `isWeekend` | Sábado e domingo bloqueados · segunda a sexta liberados |
 
 ---
 
@@ -219,7 +241,7 @@ O SQL completo está em [`supabase/schema.sql`](supabase/schema.sql).
 
 ### Pré-requisitos
 
-- Node.js >= 20
+- Node.js >= 18
 - Conta no [Supabase](https://supabase.com) (plano gratuito)
 
 ### 1. Clone o repositório

@@ -47,7 +47,7 @@ src/
 ├── repositories/      # Queries Supabase (server-only)
 ├── schemas/           # Schemas Zod compartilhados entre client e server
 ├── types/             # Interfaces TypeScript globais
-└── lib/               # Utilitários (supabase.ts, utils.ts, query-client.ts)
+└── lib/               # Utilitários (supabase.ts, utils.ts, query-client.ts, business-rules.ts)
 ```
 
 Ao criar um novo domínio, siga esse mesmo padrão: `features/<dominio>/components/`, `hooks/use-<dominio>.ts`, `services/<dominio>.ts`, `repositories/<dominio>.ts`, `schemas/<dominio>.ts`.
@@ -237,6 +237,20 @@ Armazene datas como string `'yyyy-MM-dd'` nos formulários e no banco. Nunca pas
 - Interfaces globais ficam em `src/types/index.ts`.
 - Tipos de schema Zod são exportados junto ao schema: `export type ReservationFormValues = z.infer<typeof reservationSchema>`.
 - Antes de commitar, verifique: `npx tsc --noEmit` deve retornar 0 erros.
+
+---
+
+## Testes
+
+O projeto usa **Vitest 2.x** (compatível com Node 18+). Rode com `npm test`.
+
+As regras de negócio ficam em `src/lib/business-rules.ts` como funções puras sem dependências externas. Os testes ficam em `src/lib/__tests__/business-rules.test.ts`. Ao adicionar ou alterar uma regra de negócio:
+
+1. Implemente a lógica pura em `business-rules.ts`.
+2. Use a função nos Route Handlers (`src/app/api/reservas/`).
+3. Adicione casos de teste correspondentes.
+
+Nunca teste lógica que depende de Supabase em testes unitários — mock ou integração separada.
 
 ---
 
