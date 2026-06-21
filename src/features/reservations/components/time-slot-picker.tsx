@@ -4,17 +4,15 @@ import { useMemo, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-function generateSlots(): string[] {
+function generateSlots(fromHour = 7): string[] {
   const slots: string[] = []
-  for (let h = 7; h <= 23; h++) {
+  for (let h = fromHour; h <= 23; h++) {
     for (const m of [0, 30]) {
       slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
     }
   }
   return slots
 }
-
-const ALL_SLOTS = generateSlots()
 
 interface BookedInterval {
   horario_inicio: string
@@ -44,6 +42,7 @@ interface TimeSlotPickerProps {
   onEndChange: (time: string) => void
   bookedIntervals: BookedInterval[]
   disabled?: boolean
+  availableFrom?: string
 }
 
 function SlotButton({
@@ -122,27 +121,32 @@ export function TimeSlotPicker({
   onEndChange,
   bookedIntervals,
   disabled,
+  availableFrom,
 }: TimeSlotPickerProps) {
+  const fromHour = availableFrom ? parseInt(availableFrom.split(':')[0]) : 7
+
+  const allSlots = useMemo(() => generateSlots(fromHour), [fromHour])
+
   const startSlots = useMemo(
     () =>
-      ALL_SLOTS.map((slot) => ({
+      allSlots.map((slot) => ({
         slot,
         booked: isSlotBooked(slot, bookedIntervals),
         selected: slot === startTime,
       })),
-    [bookedIntervals, startTime]
+    [allSlots, bookedIntervals, startTime]
   )
 
   const endSlots = useMemo(
     () =>
       startTime
-        ? ALL_SLOTS.filter((slot) => slot > startTime).map((slot) => ({
+        ? allSlots.filter((slot) => slot > startTime).map((slot) => ({
             slot,
             conflicted: rangeConflicts(startTime, slot, bookedIntervals),
             selected: slot === endTime,
           }))
         : [],
-    [startTime, endTime, bookedIntervals]
+    [allSlots, startTime, endTime, bookedIntervals]
   )
 
   return (

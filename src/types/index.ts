@@ -2,6 +2,8 @@ export interface Room {
   id: string
   nome: string
   capacidade: number
+  disponivel_madrugada: boolean
+  disponivel_fim_de_semana: boolean
   created_at: string
   updated_at: string
 }

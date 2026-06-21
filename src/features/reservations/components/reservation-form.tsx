@@ -74,6 +74,8 @@ export function ReservationForm({
     [scheduleReservations, defaultValues?.id]
   )
 
+  const availableFrom = selectedRoom?.disponivel_madrugada ? '00:00' : '07:00'
+
   useEffect(() => {
     if (defaultValues) {
       form.reset({
@@ -82,8 +84,8 @@ export function ReservationForm({
         participante_responsavel: defaultValues.participante_responsavel,
         quantidade_participantes: defaultValues.quantidade_participantes,
         data: defaultValues.data,
-        horario_inicio: defaultValues.horario_inicio.slice(0, 6),
-        horario_fim: defaultValues.horario_fim.slice(0, 6),
+        horario_inicio: defaultValues.horario_inicio?.slice(0, 5) ?? '',
+        horario_fim: defaultValues.horario_fim?.slice(0, 5) ?? '',
       })
     }
   }, [defaultValues, form])
@@ -203,6 +205,11 @@ export function ReservationForm({
                       field.onChange(date ? format(date, 'yyyy-MM-dd') : '')
                     }
                     locale={ptBR}
+                    disabled={
+                      selectedRoom && !selectedRoom.disponivel_fim_de_semana
+                        ? { dayOfWeek: [0, 6] }
+                        : undefined
+                    }
                   />
                 </PopoverContent>
               </Popover>
@@ -217,6 +224,7 @@ export function ReservationForm({
             endTime={horarioFim}
             bookedIntervals={bookedIntervals}
             disabled={isLoading}
+            availableFrom={availableFrom}
             onStartChange={(t) => {
               form.setValue('horario_inicio', t, { shouldValidate: true, shouldDirty: true })
               form.setValue('horario_fim', '', { shouldDirty: true })

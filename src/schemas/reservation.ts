@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 const timeRegex = /^([0-1]\d|2[0-3]):([0-5]\d)$/
-const HORA_ABERTURA = '07:00'
 
 export const reservationSchema = z
   .object({
@@ -39,13 +38,6 @@ export const reservationSchema = z
       .min(1, 'Horário de fim é obrigatório')
       .regex(timeRegex, 'Horário inválido (HH:MM)'),
   })
-  .refine(
-    (data) => data.horario_inicio >= HORA_ABERTURA,
-    {
-      message: 'Reservas só podem começar a partir das 07:00',
-      path: ['horario_inicio'],
-    }
-  )
   .refine(
     (data) => data.horario_fim > data.horario_inicio,
     {

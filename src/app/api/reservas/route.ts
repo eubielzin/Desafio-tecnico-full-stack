@@ -52,6 +52,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Regra 3 — Disponibilidade no fim de semana
+    const dayOfWeek = new Date(data + 'T12:00:00').getDay()
+    if (!sala.disponivel_fim_de_semana && (dayOfWeek === 0 || dayOfWeek === 6)) {
+      return NextResponse.json(
+        { error: `A sala "${sala.nome}" não está disponível nos fins de semana.` },
+        { status: 409 }
+      )
+    }
+
+    // Regra 4 — Disponibilidade na madrugada
+    if (!sala.disponivel_madrugada && horario_inicio < '07:00') {
+      return NextResponse.json(
+        { error: `A sala "${sala.nome}" não aceita reservas na madrugada (antes das 07:00).` },
+        { status: 409 }
+      )
+    }
+
     // Regra 1 — Conflito de horário
     const conflicts = await findConflicts(sala_id, data, horario_inicio, horario_fim)
     if (conflicts.length > 0) {

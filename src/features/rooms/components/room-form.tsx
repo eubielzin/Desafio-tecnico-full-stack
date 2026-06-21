@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { roomSchema, type RoomFormValues } from '@/schemas/room'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -29,12 +30,19 @@ export function RoomForm({ defaultValues, onSubmit, isLoading, onCancel }: RoomF
     defaultValues: {
       nome: defaultValues?.nome ?? '',
       capacidade: defaultValues?.capacidade ?? ('' as unknown as number),
+      disponivel_madrugada: defaultValues?.disponivel_madrugada ?? false,
+      disponivel_fim_de_semana: defaultValues?.disponivel_fim_de_semana ?? false,
     },
   })
 
   useEffect(() => {
     if (defaultValues) {
-      form.reset({ nome: defaultValues.nome, capacidade: defaultValues.capacidade })
+      form.reset({
+        nome: defaultValues.nome,
+        capacidade: defaultValues.capacidade,
+        disponivel_madrugada: defaultValues.disponivel_madrugada,
+        disponivel_fim_de_semana: defaultValues.disponivel_fim_de_semana,
+      })
     }
   }, [defaultValues, form])
 
@@ -70,6 +78,46 @@ export function RoomForm({ defaultValues, onSubmit, isLoading, onCancel }: RoomF
                   onChange={(e) => field.onChange(e.target.valueAsNumber)}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="disponivel_madrugada"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-3 py-1">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isLoading}
+                />
+              </FormControl>
+              <FormLabel className="font-normal cursor-pointer leading-tight">
+                Disponível na madrugada (00:00–06:59)
+              </FormLabel>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="disponivel_fim_de_semana"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-3 py-1">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isLoading}
+                />
+              </FormControl>
+              <FormLabel className="font-normal cursor-pointer leading-tight">
+                Disponível no fim de semana
+              </FormLabel>
               <FormMessage />
             </FormItem>
           )}

@@ -11,6 +11,8 @@ export const roomSchema = z.object({
     .int('Capacidade deve ser um número inteiro')
     .min(1, 'Capacidade mínima é 1 pessoa')
     .max(1000, 'Capacidade máxima é 1000 pessoas'),
+  disponivel_madrugada: z.boolean(),
+  disponivel_fim_de_semana: z.boolean(),
 })
 
 export const updateRoomSchema = roomSchema.partial()

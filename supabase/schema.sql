@@ -9,12 +9,18 @@ create extension if not exists "pgcrypto";
 -- TABLE: salas (Rooms)
 -- ============================================================
 create table if not exists salas (
-  id          uuid primary key default gen_random_uuid(),
-  nome        varchar(100)  not null,
-  capacidade  integer       not null check (capacidade >= 1),
-  created_at  timestamptz   not null default now(),
-  updated_at  timestamptz   not null default now()
+  id                       uuid primary key default gen_random_uuid(),
+  nome                     varchar(100)  not null,
+  capacidade               integer       not null check (capacidade >= 1),
+  disponivel_madrugada     boolean       not null default false,
+  disponivel_fim_de_semana boolean       not null default false,
+  created_at               timestamptz   not null default now(),
+  updated_at               timestamptz   not null default now()
 );
+
+-- Migration for existing databases:
+-- ALTER TABLE salas ADD COLUMN IF NOT EXISTS disponivel_madrugada boolean not null default false;
+-- ALTER TABLE salas ADD COLUMN IF NOT EXISTS disponivel_fim_de_semana boolean not null default false;
 
 -- Prevent duplicate room names
 create unique index if not exists salas_nome_unique on salas (lower(trim(nome)));
