@@ -135,7 +135,7 @@ export function ReservationsTimeline() {
               return (
                 <div
                   key={format(day, 'yyyy-MM-dd')}
-                  className="flex-1 min-w-[120px] border-r last:border-r-0 flex flex-col items-center justify-center py-2 gap-0.5"
+                  className="flex-1 min-w-30 border-r last:border-r-0 flex flex-col items-center justify-center py-2 gap-0.5"
                 >
                   <span className="text-[11px] font-medium text-muted-foreground tracking-wider">
                     {DAY_LABELS[day.getDay()]}
@@ -157,20 +157,22 @@ export function ReservationsTimeline() {
 
               {/* Coluna de horas — sticky left para scroll horizontal */}
               <div
-                className="w-14 shrink-0 sticky left-0 z-10 bg-background border-r"
+                className="w-14 shrink-0 sticky left-0 z-10 bg-background border-r overflow-hidden relative"
                 style={{ height: TOTAL_HEIGHT }}
               >
-                {HOURS.map((h) => (
-                  <div
-                    key={h}
-                    className="absolute w-full pr-2 flex justify-end -translate-y-1/2"
-                    style={{ top: (h - START_HOUR) * HOUR_HEIGHT }}
-                  >
-                    <span className="text-[11px] text-muted-foreground tabular-nums select-none">
-                      {String(h).padStart(2, '0')}:00
-                    </span>
-                  </div>
-                ))}
+                {HOURS.map((h, i) =>
+                  i === 0 ? null : (
+                    <div
+                      key={h}
+                      className="absolute w-full pr-2 flex justify-end"
+                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT - 8 }}
+                    >
+                      <span className="text-[11px] text-muted-foreground tabular-nums select-none">
+                        {String(h).padStart(2, '0')}:00
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
 
               {/* Colunas dos dias */}
@@ -184,7 +186,7 @@ export function ReservationsTimeline() {
                   <div
                     key={dateStr}
                     className={cn(
-                      'flex-1 min-w-[120px] border-r last:border-r-0 relative',
+                      'flex-1 min-w-30 border-r last:border-r-0 relative',
                       today && 'bg-blue-50/40'
                     )}
                     style={{ height: TOTAL_HEIGHT }}
