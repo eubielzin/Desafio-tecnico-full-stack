@@ -11,12 +11,13 @@ A aplicação permite que equipes cadastrem salas de reunião e realizem reserva
 ### Funcionalidades
 
 - **Dashboard** — totais de salas, reservas, reservas em andamento e próximas reservas (atualização automática a cada 1 minuto)
-- **CRUD de Salas** — criar, editar, excluir e listar salas com nome e capacidade
+- **CRUD de Salas** — criar, editar, excluir e listar salas com nome, capacidade e configuração de disponibilidade (madrugada e fim de semana)
 - **CRUD de Reservas** — criar, editar, excluir e listar reservas com indicação de capacidade máxima da sala no formulário
 - **Filtros avançados** — filtrar por sala, por período (seletor de intervalo de datas) e por status; ordenação por data/horário (mais antigo ou mais recente primeiro)
 - **Status em tempo real** — cada reserva é classificada automaticamente como *Em andamento*, *Próxima* ou *Encerrada*
 - **Prevenção de conflitos** — bloqueio no servidor de reservas sobrepostas ou encostadas na mesma sala
 - **Validação de capacidade** — impede reservas com mais participantes do que a sala comporta
+- **Disponibilidade configurável por sala** — admin define se a sala aceita reservas na madrugada (00:00–06:59) e/ou nos fins de semana; o formulário de reserva adapta o calendário e os horários disponíveis de acordo
 - **Comunicação de erros em dois níveis** — toast temporário + alerta inline vermelho dentro do formulário
 
 ---
@@ -38,7 +39,7 @@ src/
 │   └── page.tsx            # Dashboard
 │
 ├── components/             # Componentes compartilhados de UI
-│   ├── ui/                 # Shadcn/UI (button, dialog, form, table, calendar…)
+│   ├── ui/                 # Shadcn/UI (button, dialog, form, table, calendar, checkbox…)
 │   ├── navbar.tsx          # Sidebar desktop + bottom nav mobile
 │   ├── page-header.tsx
 │   ├── empty-state.tsx
@@ -78,7 +79,7 @@ src/
 │
 ├── schemas/
 │   ├── room.ts             # Zod schema de sala
-│   └── reservation.ts      # Zod schema de reserva (horário de abertura + refinements)
+│   └── reservation.ts      # Zod schema de reserva (fim > início; regras de horário no servidor)
 │
 ├── types/
 │   └── index.ts            # Interfaces TypeScript: Room, Reservation, DashboardStats…
@@ -95,8 +96,9 @@ src/
 Formulário (React Hook Form + Zod)
   → useMutation (TanStack Query)
     → POST /api/reservas (Route Handler)
-      → Valida schema Zod (campos, horário de abertura, fim > início)
+      → Valida schema Zod (campos obrigatórios, fim > início)
       → Verifica capacidade da sala (Regra 2)
+      → Verifica disponibilidade da sala (madrugada / fim de semana) (Regra 4)
       → Detecta conflito de horário (Regra 1)
       → Persiste no Supabase / retorna erro 409
     → Invalida cache → UI atualizada
@@ -121,7 +123,16 @@ Ao editar uma reserva, a própria reserva é excluída da verificação de confl
 
 ### Regra 3 — Horário válido
 
-`horario_fim > horario_inicio` é validado no schema Zod (cliente + servidor). Reservas só podem começar a partir das **07:00** — madrugada (00:00–06:59) é bloqueada. Todos os campos são obrigatórios.
+`horario_fim > horario_inicio` é validado no schema Zod (cliente + servidor). Por padrão, reservas só podem começar a partir das **07:00** — mas salas com `disponivel_madrugada = true` aceitam reservas desde as 00:00. A validação de horário mínimo ocorre no servidor com base no campo da sala. Todos os campos são obrigatórios.
+
+### Regra 4 — Disponibilidade por sala
+
+Cada sala tem dois flags configuráveis pelo admin:
+
+- **`disponivel_madrugada`**: se `false` (padrão), reservas com `horario_inicio < '07:00'` são rejeitadas com HTTP 409.
+- **`disponivel_fim_de_semana`**: se `false` (padrão), reservas em sábado ou domingo são rejeitadas com HTTP 409.
+
+O formulário de reserva exibe apenas os horários e datas permitidos pela sala selecionada.
 
 ---
 
@@ -133,7 +144,7 @@ O enunciado deixa quatro questões em aberto intencionalmente. Decisões tomadas
 Sim. Uma reserva que termina às 15h00 e outra que começa às 15h00 na mesma sala **são conflito**. A pessoa ainda pode estar na sala quando a próxima reserva começa. A detecção usa desigualdade não-estrita (`inicio <= fim` e `fim >= inicio`), bloqueando qualquer toque entre intervalos.
 
 **2. Existe horário de funcionamento?**
-Sim. Reservas só são permitidas entre **07:00 e 23:59**. Madrugada (00:00–06:59) é bloqueada tanto no cliente (Zod) quanto no servidor (Route Handler). Fim de semana é permitido — equipes podem ter necessidades de reunião no sábado ou domingo. Reservas que cruzam a meia-noite (ex.: 23:00–00:00) não são suportadas pois o tipo `time` do PostgreSQL não representa "dia seguinte"; recomenda-se encerrar até 23:59.
+Sim, com configuração por sala. Por padrão cada sala opera entre **07:00 e 23:59**. O admin pode habilitar `disponivel_madrugada` para liberar reservas a partir das 00:00, e `disponivel_fim_de_semana` para permitir reservas aos sábados e domingos. A validação é feita no servidor e o formulário adapta o seletor de horários e o calendário automaticamente. Reservas que cruzam a meia-noite (ex.: 23:00–00:00) não são suportadas pois o tipo `time` do PostgreSQL não representa "dia seguinte"; recomenda-se encerrar até 23:59.
 
 **3. O que acontece ao editar uma reserva para um horário que conflita?**
 A edição é **bloqueada** com HTTP 409, da mesma forma que a criação. O sistema exclui a própria reserva da verificação (`excludeId`) para não conflitar consigo mesma ao salvar sem mudança de horário, mas qualquer sobreposição com outra reserva é impedida.
@@ -149,11 +160,13 @@ Em dois níveis simultâneos: (a) um **toast** (notificação temporária no can
 
 ```
 salas
-  id            uuid PK
-  nome          varchar(100) UNIQUE (case-insensitive)
-  capacidade    integer >= 1
-  created_at    timestamptz
-  updated_at    timestamptz
+  id                       uuid PK
+  nome                     varchar(100) UNIQUE (case-insensitive)
+  capacidade               integer >= 1
+  disponivel_madrugada     boolean default false
+  disponivel_fim_de_semana boolean default false
+  created_at               timestamptz
+  updated_at               timestamptz
 
 reservas
   id                       uuid PK

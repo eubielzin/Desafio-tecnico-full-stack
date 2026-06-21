@@ -40,7 +40,7 @@ src/
 │   ├── api/           # Route Handlers — toda lógica de negócio fica aqui
 │   ├── salas/         # Páginas (Client Components com 'use client')
 │   └── reservas/
-├── components/ui/     # Componentes Shadcn/UI — NÃO editar diretamente
+├── components/ui/     # Componentes Shadcn/UI — NÃO editar os existentes diretamente; novos podem ser adicionados
 ├── features/          # Componentes de domínio (rooms/, reservations/, dashboard/)
 ├── hooks/             # TanStack Query hooks (use-rooms.ts, use-reservations.ts)
 ├── services/          # Funções fetch para os Route Handlers
@@ -119,6 +119,24 @@ Sempre use `v ?? 'fallback'` ao processar o retorno de `onValueChange`:
 onValueChange={(v) => onSortChange((v ?? 'asc') as SortOrder)}
 ```
 
+### Checkbox com react-hook-form
+Use o componente `Checkbox` de `@/components/ui/checkbox` (wrapper de `@base-ui/react/checkbox`). O `onCheckedChange` recebe `boolean` diretamente — sem evento — então integra limpo com `field.onChange`:
+
+```tsx
+<FormField
+  control={form.control}
+  name="disponivel_madrugada"
+  render={({ field }) => (
+    <FormItem className="flex items-center gap-3 py-1">
+      <FormControl>
+        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+      </FormControl>
+      <FormLabel className="font-normal cursor-pointer">Descrição</FormLabel>
+    </FormItem>
+  )}
+/>
+```
+
 ---
 
 ## Zod v4
@@ -171,7 +189,15 @@ onChange={(e) => field.onChange(e.target.valueAsNumber)}
 Usa desigualdade **não-estrita**: reservas que se encostam (ex.: 14:00–15:00 e 15:00–16:00) **são conflito**. Implementado com `.lte('horario_inicio', horarioFim).gte('horario_fim', horarioInicio)`.
 
 ### Horário de funcionamento
-Reservas só podem começar a partir das **07:00**. Madrugada (00:00–06:59) é bloqueada no schema Zod (`HORA_ABERTURA = '07:00'`). O banco usa tipo `time`, que não suporta cruzar meia-noite — fim máximo recomendado: 23:59.
+Por padrão, reservas só podem começar a partir das **07:00**. A validação de madrugada é feita **no servidor** (Route Handler), condicionalmente ao campo `sala.disponivel_madrugada`. O schema Zod de reserva **não** possui refine de hora mínima — a regra é por sala. O banco usa tipo `time`, que não suporta cruzar meia-noite — fim máximo recomendado: 23:59.
+
+### Disponibilidade por sala
+Cada sala possui dois campos booleanos configuráveis pelo admin:
+
+- **`disponivel_madrugada`** (`boolean`, default `false`): se `false`, qualquer reserva com `horario_inicio < '07:00'` é rejeitada com HTTP 409. Se `true`, a sala aceita reservas a partir das 00:00. O `TimeSlotPicker` recebe prop `availableFrom='00:00'` quando a sala selecionada tem esse campo ativo.
+- **`disponivel_fim_de_semana`** (`boolean`, default `false`): se `false`, reservas cujo campo `data` cai em sábado ou domingo são rejeitadas com HTTP 409. O calendário do formulário desabilita visualmente esses dias via `disabled={{ dayOfWeek: [0, 6] }}` do react-day-picker. Dia da semana calculado como `new Date(data + 'T12:00:00').getDay()` (T12 evita problemas de timezone UTC).
+
+Ambas as regras são validadas no servidor **após** a validação de capacidade e **antes** da detecção de conflito.
 
 ### Capacidade
 `quantidade_participantes > sala.capacidade` retorna HTTP 409. É bloqueio rígido, não aviso.
