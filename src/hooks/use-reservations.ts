@@ -17,6 +17,16 @@ export function useReservations(salaId?: string) {
   })
 }
 
+export function useRoomSchedule(salaId?: string, data?: string) {
+  return useQuery({
+    queryKey: queryKeys.reservations.all(salaId),
+    queryFn: () => fetchReservations(salaId),
+    enabled: !!salaId,
+    select: (reservations) =>
+      data ? reservations.filter((r) => r.data === data) : [],
+  })
+}
+
 export function useDashboard() {
   return useQuery({
     queryKey: queryKeys.dashboard,

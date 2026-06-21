@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { format } from 'date-fns'
@@ -25,10 +25,11 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
+import { useRoomSchedule } from '@/hooks/use-reservations'
+import { TimeSlotPicker } from './time-slot-picker'
 import type { ReservationWithRoom, Room } from '@/types'
 
 interface ReservationFormProps {
@@ -62,7 +63,16 @@ export function ReservationForm({
   })
 
   const selectedSalaId = form.watch('sala_id')
+  const selectedData = form.watch('data')
+  const horarioInicio = form.watch('horario_inicio')
+  const horarioFim = form.watch('horario_fim')
   const selectedRoom = rooms.find((r) => r.id === selectedSalaId)
+
+  const { data: scheduleReservations = [] } = useRoomSchedule(selectedSalaId || undefined, selectedData)
+  const bookedIntervals = useMemo(
+    () => scheduleReservations.filter((r) => r.id !== defaultValues?.id),
+    [scheduleReservations, defaultValues?.id]
+  )
 
   useEffect(() => {
     if (defaultValues) {
@@ -72,15 +82,15 @@ export function ReservationForm({
         participante_responsavel: defaultValues.participante_responsavel,
         quantidade_participantes: defaultValues.quantidade_participantes,
         data: defaultValues.data,
-        horario_inicio: defaultValues.horario_inicio.slice(0, 5),
-        horario_fim: defaultValues.horario_fim.slice(0, 5),
+        horario_inicio: defaultValues.horario_inicio.slice(0, 6),
+        horario_fim: defaultValues.horario_fim.slice(0, 6),
       })
     }
   }, [defaultValues, form])
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <Form {...form} >
+      <form onSubmit={form.handleSubmit(onSubmit)} className=" space-y-4 ">
         <FormField
           control={form.control}
           name="sala_id"
@@ -201,34 +211,26 @@ export function ReservationForm({
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="horario_inicio"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Início</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <div className="space-y-1.5">
+          <TimeSlotPicker
+            startTime={horarioInicio}
+            endTime={horarioFim}
+            bookedIntervals={bookedIntervals}
+            disabled={isLoading}
+            onStartChange={(t) => {
+              form.setValue('horario_inicio', t, { shouldValidate: true, shouldDirty: true })
+              form.setValue('horario_fim', '', { shouldDirty: true })
+            }}
+            onEndChange={(t) =>
+              form.setValue('horario_fim', t, { shouldValidate: true, shouldDirty: true })
+            }
           />
-
-          <FormField
-            control={form.control}
-            name="horario_fim"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Fim</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {(form.formState.errors.horario_inicio || form.formState.errors.horario_fim) && (
+            <p className="text-sm font-medium text-destructive">
+              {form.formState.errors.horario_inicio?.message ??
+                form.formState.errors.horario_fim?.message}
+            </p>
+          )}
         </div>
 
         {serverError && (
