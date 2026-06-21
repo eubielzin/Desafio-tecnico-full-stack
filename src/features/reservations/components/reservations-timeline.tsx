@@ -11,7 +11,7 @@ import { useReservations } from '@/hooks/use-reservations'
 import { TableSkeleton } from '@/components/loading-state'
 import type { ReservationWithRoom } from '@/types'
 
-const START_HOUR = 7
+const START_HOUR = 0
 const END_HOUR = 23
 const HOUR_HEIGHT = 56
 const TOTAL_HEIGHT = (END_HOUR - START_HOUR) * HOUR_HEIGHT
@@ -160,19 +160,17 @@ export function ReservationsTimeline() {
                 className="w-14 shrink-0 sticky left-0 z-10 bg-background border-r overflow-hidden relative"
                 style={{ height: TOTAL_HEIGHT }}
               >
-                {HOURS.map((h, i) =>
-                  i === 0 ? null : (
-                    <div
-                      key={h}
-                      className="absolute w-full pr-2 flex justify-end"
-                      style={{ top: (h - START_HOUR) * HOUR_HEIGHT - 8 }}
-                    >
-                      <span className="text-[11px] text-muted-foreground tabular-nums select-none">
-                        {String(h).padStart(2, '0')}:00
-                      </span>
-                    </div>
-                  )
-                )}
+                {HOURS.map((h, i) => (
+                  <div
+                    key={h}
+                    className="absolute w-full pr-2 flex justify-end"
+                    style={{ top: i === 0 ? 4 : (h - START_HOUR) * HOUR_HEIGHT - 8 }}
+                  >
+                    <span className="text-[11px] text-muted-foreground tabular-nums select-none">
+                      {String(h).padStart(2, '0')}:00
+                    </span>
+                  </div>
+                ))}
               </div>
 
               {/* Colunas dos dias */}
