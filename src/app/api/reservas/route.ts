@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { reservationSchema } from '@/schemas/reservation'
 import { getAllReservations, createReservation, findConflicts } from '@/repositories/reservations'
 import { getRoomById } from '@/repositories/rooms'
+import { isWeekend, isMadrugada, exceedsCapacity } from '@/lib/business-rules'
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth()
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (!sala) {
       return NextResponse.json({ error: 'Sala não encontrada.' }, { status: 404 })
     }
-    if (quantidade_participantes > sala.capacidade) {
+    if (exceedsCapacity(quantidade_participantes, sala.capacidade)) {
       return NextResponse.json(
         {
           error: `A sala "${sala.nome}" comporta no máximo ${sala.capacidade} participante(s). Você informou ${quantidade_participantes}.`,
@@ -53,8 +54,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Regra 3 — Disponibilidade no fim de semana
-    const dayOfWeek = new Date(data + 'T12:00:00').getDay()
-    if (!sala.disponivel_fim_de_semana && (dayOfWeek === 0 || dayOfWeek === 6)) {
+    if (!sala.disponivel_fim_de_semana && isWeekend(data)) {
       return NextResponse.json(
         { error: `A sala "${sala.nome}" não está disponível nos fins de semana.` },
         { status: 409 }
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Regra 4 — Disponibilidade na madrugada
-    if (!sala.disponivel_madrugada && horario_inicio < '07:00') {
+    if (!sala.disponivel_madrugada && isMadrugada(horario_inicio)) {
       return NextResponse.json(
         { error: `A sala "${sala.nome}" não aceita reservas na madrugada (antes das 07:00).` },
         { status: 409 }
