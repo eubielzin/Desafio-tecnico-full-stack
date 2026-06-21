@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { format } from 'date-fns'
+import { format, startOfToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { AlertCircle, CalendarIcon } from 'lucide-react'
 import { reservationSchema, type ReservationFormValues } from '@/schemas/reservation'
@@ -213,11 +213,12 @@ export function ReservationForm({
                       field.onChange(date ? format(date, 'yyyy-MM-dd') : '')
                     }
                     locale={ptBR}
-                    disabled={
-                      selectedRoom && !selectedRoom.disponivel_fim_de_semana
-                        ? { dayOfWeek: [0, 6] }
-                        : undefined
-                    }
+                    disabled={[
+                      { before: startOfToday() },
+                      ...(selectedRoom && !selectedRoom.disponivel_fim_de_semana
+                        ? [{ dayOfWeek: [0, 6] as number[] }]
+                        : []),
+                    ]}
                   />
                 </PopoverContent>
               </Popover>

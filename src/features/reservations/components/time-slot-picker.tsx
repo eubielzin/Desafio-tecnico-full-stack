@@ -23,7 +23,7 @@ function isSlotBooked(slot: string, bookings: BookedInterval[]): boolean {
   return bookings.some((b) => {
     const s = b.horario_inicio.slice(0, 5)
     const e = b.horario_fim.slice(0, 5)
-    return s <= slot && slot < e
+    return s <= slot && slot <= e
   })
 }
 
