@@ -130,7 +130,7 @@ Ao editar uma reserva, a própria reserva é excluída da verificação de confl
 Cada sala tem dois flags configuráveis pelo admin:
 
 - **`disponivel_madrugada`**: se `false` (padrão), reservas com `horario_inicio < '07:00'` são rejeitadas com HTTP 409.
-- **`disponivel_fim_de_semana`**: se `false` (padrão), reservas em sábado ou domingo são rejeitadas com HTTP 409.
+- **`disponivel_fim_de_semana`**: se `false` (padrão), reservas em sábado ou domingo são rejeitadas com HTTP 409. O calendário desabilita esses dias visualmente e, ao trocar de sala, qualquer data de fim de semana já selecionada é limpa automaticamente.
 
 O formulário de reserva exibe apenas os horários e datas permitidos pela sala selecionada.
 
