@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { requireAdmin } from '@/lib/roles'
 import { reservationSchema } from '@/schemas/reservation'
 import {
   getReservationById,
@@ -13,6 +15,11 @@ interface Params {
 }
 
 export async function GET(_req: NextRequest, { params }: Params) {
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   try {
     const { id } = await params
     const reservation = await getReservationById(id)
@@ -26,6 +33,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const body = await req.json()
@@ -80,6 +90,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
+  const denied = await requireAdmin()
+  if (denied) return denied
+
   try {
     const { id } = await params
     const existing = await getReservationById(id)

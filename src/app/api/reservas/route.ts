@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { reservationSchema } from '@/schemas/reservation'
 import { getAllReservations, createReservation, findConflicts } from '@/repositories/reservations'
 import { getRoomById } from '@/repositories/rooms'
 
 export async function GET(req: NextRequest) {
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   try {
     const salaId = req.nextUrl.searchParams.get('sala_id') ?? undefined
     const reservations = await getAllReservations(salaId)
@@ -14,6 +20,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   try {
     const body = await req.json()
     const parsed = reservationSchema.safeParse(body)

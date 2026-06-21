@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { UserButton } from '@clerk/nextjs'
 import { cn } from '@/lib/utils'
 import { CalendarDays, LayoutDashboard, DoorOpen } from 'lucide-react'
 
@@ -36,6 +37,9 @@ export function Navbar() {
           </Link>
         ))}
       </nav>
+      <div className="p-4 border-t">
+        <UserButton showName />
+      </div>
     </aside>
   )
 }
